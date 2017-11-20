@@ -145,157 +145,119 @@ vector<string> Graph::edges()
 
 int Graph::DFS(string startingCity, vector<string> &dfs, vector<string> &ancestors)
 {
-    // Add starting city to ancestors vector
-    ancestors.push_back(startingCity);
-
 	// Gets the graph index of the vertex being visited.
 	int currVertex = findVertex(startingCity);
 
 	// Visits the vertex.
 	graph.at(currVertex).visited = true;
 
-	// Searches the vector of visited vertices for the city being visited.
-	vector<string>::iterator nextCityIt = find(dfs.begin(), dfs.end(), startingCity);
+	// Adds the starting city to the vector
+    dfs.push_back(startingCity);
 
-	// Adds the vertex to the vector if it is not already in the vector.
-	if(nextCityIt == dfs.end())
-	{
-		dfs.push_back(startingCity);
-	}
+    // Add starting city to ancestors vector
+    ancestors.push_back(startingCity);
 
 	// Performs a recursive call on itself to visit all vertices in the graph.
 	if(verticesVisited() != graph.size())
 	{
-		// Gets the graph index of the next closest city in the graph.
-		int nextVertex = smallestEdgeDFS(currVertex, dfs);
+		// Gets the shortest outgoing edge
+		Edge * nextEdge = smallestEdgeDFS(currVertex, dfs, ancestors);
 
 		// Performs recursive call to visit the next closest city.
-		DFS(graph.at(nextVertex).city, dfs);
+		DFS(nextEdge->v, dfs, ancestors);
 	}
-
-	ancestors.pop_back();
 
 	return dfsDistance;
 }
 
-vector<string> Graph::getDiscoveryEdges(vector<string> &dfs)
+void Graph::dfsLabelEdges(vector<string> &dfs, vector<string> &backEdges, vector<string> &discEdges, vector<string> &crossEdges, vector<string> &forwardEdges)
 {
-	vector<Edge> discEdges; // Vector of the discovery edges.
-
-	// Adds the discovery edges to the vector in the order they were discovered.
-	for(unsigned int i = 0; i < graph.size(); i++)
-	{
-		int dfsIndex = findVertex(dfs.at(i));
-
-		for(unsigned int j = 0; j < graph.at(dfsIndex).edgeList.size(); j++)
-		{
-			// Only adds the edge to the vector if it is a discovery edge.
-			if(graph.at(dfsIndex).edgeList.at(j).discoveryEdge)
-			{
-				discEdges.push_back(graph.at(dfsIndex).edgeList.at(j));
-			}
-		}
-	}
-
-	// Deletes edges with the same vertices to avoid duplicates.
-	//deleteDuplicates(discEdges);
-
-	// Iterator to the beginning of the vector of discovery edges.
-	vector<Edge>::iterator edgeIt = discEdges.begin();
-
-	vector<string> discoveryEdges; // Vector of discovery edge pairs.
-
-	// Adds the discovery edges to the string vector in (u, v) format.
-	while(edgeIt != discEdges.end())
-	{
-		discoveryEdges.push_back("(" + edgeIt->u + ", " + edgeIt->v + ")");
-
-		edgeIt++;
-	}
-
-	return discoveryEdges;
-}
-
-vector<string> Graph::getBackEdges(vector<string> &dfs)
-{
-	vector<Edge> backEdges; // Vector of back edges.
-
-	// Adds the back edges to the vector in the order they were discovered.
-	for(unsigned int i = 0; i < graph.size(); i++)
-	{
-		int dfsIndex = findVertex(dfs.at(i));
-
-		for(unsigned int j = 0; j < graph.at(dfsIndex).edgeList.size(); j++)
-		{
-			// Only adds the edge to the vector if it is a back edge.
-			if(!(graph.at(dfsIndex).edgeList.at(j).discoveryEdge))
-			{
-				backEdges.push_back(graph.at(dfsIndex).edgeList.at(j));
-				//cout << "Added edge (" << graph.at(dfsIndex).edgeList.at(j).u << ", " << graph.at(dfsIndex).edgeList.at(j).v << ")\n";
-			}
-		}
-	}
-
-	// Deletes edges with the same vertices to avoid duplicates.
-	//deleteDuplicates(backEdges);
-
-	// Iterator to the beginning of the vector of back edges.
-	vector<Edge>::iterator edgeIt = backEdges.begin();
-
-	vector<string> backEdgeList; // Vector of back edge pairs.
-
-	// Adds the back edges to the string vector in (u, v) format.
-	while(edgeIt != backEdges.end())
-	{
-		backEdgeList.push_back("(" + edgeIt->u + ", " + edgeIt->v + ")");
-
-		edgeIt++;
-	}
-
-	return backEdgeList;
-}
-
-void Graph::bfsLabelEdges(vector<string> &backEdges, vector<string> &crossEdges)
-{
-    Edge * currentEdge;
+    Edge * currEdge;
+    string currString;
 
 	// Adds the edges in the graph to the vector if the node has edges.
 	for(unsigned int i = 0; i < graph.size(); i++)
 	{
-		for (int j=0; j<graph.at(i).edgeList.size(); j++)
+		int dfsIndex = findVertex(dfs.at(i));
+		for(unsigned int j = 0; j < graph.at(dfsIndex).edgeList.size(); j++)
 		{
-			currentEdge = &graph.at(i).edgeList.at(j);
-			if (currentEdge->bfsType != 1)
+			currEdge = &graph.at(dfsIndex).edgeList.at(j);
+			currString = "(" + currEdge->u + ", " + currEdge->v + ")";
+			switch (currEdge->dfsType)
             {
-                if(graph.at(findVertex(currentEdge->u)).bfsLevel > graph.at(findVertex(currentEdge->v)).bfsLevel) {
-                    currentEdge->bfsType = 0;
-                    backEdges.push_back("(" + currentEdge->u + ", " + currentEdge->v + ")");
-                }
-                else {
-                    currentEdge->bfsType = 2;
-                    crossEdges.push_back("(" + currentEdge->u + ", " + currentEdge->v + ")");
-                }
+            case 0:
+                backEdges.push_back(currString);
+                break;
+            case 1:
+                discEdges.push_back(currString);
+                break;
+            case 2:
+                // somehow figure out if it's a forward or cross edge
+                forwardEdges.push_back(currString);
+                break;
 			}
 		}
 	}
 }
 
-Edge * Graph::smallestEdgeDFS(int currVertex, vector<string> &dfs)
+void Graph::bfsLabelEdges(vector<string> &backEdges, vector<string> &discEdges, vector<string> &crossEdges)
 {
+    Edge * currEdge;
+    string currString;
+
+	// Adds the edges in the graph to the vector if the node has edges.
+	for(unsigned int i = 0; i < graph.size(); i++)
+	{
+		for (unsigned int j=0; j<graph.at(i).edgeList.size(); j++)
+		{
+			currEdge = &graph.at(i).edgeList.at(j);
+			currString = "(" + currEdge->u + ", " + currEdge->v + ")";
+			if (currEdge->bfsType != 1)
+            {
+                if(graph.at(findVertex(currEdge->u)).bfsLevel > graph.at(findVertex(currEdge->v)).bfsLevel) {
+                    currEdge->bfsType = 0;
+                    backEdges.push_back(currString);
+                }
+                else {
+                    currEdge->bfsType = 2;
+                    crossEdges.push_back(currString);
+                }
+			}
+			else {
+                discEdges.push_back(currString);
+			}
+		}
+	}
+}
+
+Edge * Graph::smallestEdgeDFS(int currVertex, vector<string> &dfs, vector<string> &ancestors)
+{
+	// Gets the size of the edgeList for the current vertex.
+    int size = graph.at(currVertex).edgeList.size();
+
 	// Searches for the next closest edge if all edges of the current vertex have
 	// not been visited yet, else backtracks to find a vertex whose edges have
 	// not all been discovered.
-	if(edgesDiscovered(currVertex) != graph.at(currVertex).edgeList.size())
+
+	if(edgesDiscovered(currVertex) != size)
 	{
-		// Edge list vertex of the closest city.
+		// Edge list index of the closest city.
 		int smallestIndex = 0;
 
-		// Edge list vertex of the city whose distance is being compared to the
+		// Edge list index of the city whose distance is being compared to the
 		// city at edgeList.at(smallestIndex).
 		int compIndex = smallestIndex + 1;
 
-		// Gets the size of the edgeList for the current vertex.
-		int size = graph.at(currVertex).edgeList.size();
+		// If the other vertex in the edgeList.at(0) is not visited and not an
+		// ancestor, mark the edge as a cross edge (temporarily).
+		// Note: Index 0 needs to be checked separately here, since compIndex
+		// will start at index 1
+        if (!graph.at(findVertex(graph.at(currVertex).edgeList.at(0).v)).visited) {
+            vector<string>::iterator ancestorsIt =
+                find(ancestors.begin(),ancestors.end(),graph.at(currVertex).edgeList.at(0).v);
+            if (ancestorsIt == ancestors.end())
+                graph.at(currVertex).edgeList.at(0).dfsType = 2;
+        }
 
 		// Finds the next closest city that has not been visited yet.
 		while(compIndex < size)
@@ -306,6 +268,7 @@ Edge * Graph::smallestEdgeDFS(int currVertex, vector<string> &dfs)
 			// Gets the graph index of the city in the edge list being comapred
 			// to the city at edgeList.at(smallestIndex).
 			int compVertex = findVertex(graph.at(currVertex).edgeList.at(compIndex).v);
+
 
 			// If the vertex at graph.at(smallestVertex) has already been visited,
 			// increments smallest index and does nothing, else checks if the
@@ -326,6 +289,13 @@ Edge * Graph::smallestEdgeDFS(int currVertex, vector<string> &dfs)
 						smallestIndex = compIndex;
 					}
 				}
+
+				// If the other vertex in the edge is not visited and not an ancestor,
+                // mark the edge as a cross edge (temporarily).
+                vector<string>::iterator ancestorsIt =
+                    find(ancestors.begin(),ancestors.end(),graph.at(currVertex).edgeList.at(compIndex).v);
+                if (ancestorsIt == ancestors.end())
+                    graph.at(currVertex).edgeList.at(compIndex).dfsType = 2;
 			}
 
 			// Increments compIndex so that it is always the after smallestIndex.
@@ -333,26 +303,12 @@ Edge * Graph::smallestEdgeDFS(int currVertex, vector<string> &dfs)
 		}
 
 		// Marks the edge that has the smallest weight as a discovery edge.
-		graph.at(currVertex).edgeList.at(smallestIndex).discoveryEdge = true;
+		graph.at(currVertex).edgeList.at(smallestIndex).dfsType = 1;
 
 		// Adds the distance to the overall distance traveled.
 		dfsDistance += graph.at(currVertex).edgeList.at(smallestIndex).weight;
 
-		// Gets the name of the city that is the closest to the current city.
-		string nextCity = graph.at(currVertex).edgeList.at(smallestIndex).v;
-
-		// Finds the graph index of the closest city.
-		smallestIndex = findVertex(nextCity);
-
-		/*for(unsigned int i = 0; i < graph.at(smallestIndex).edgeList.size(); i++)
-		{
-			if(graph.at(currVertex).city == graph.at(smallestIndex).edgeList.at(i).v)
-			{
-				graph.at(smallestIndex).edgeList.at(i).discoveryEdge = true;
-			}
-		}*/
-
-		return smallestIndex;
+		return &graph.at(currVertex).edgeList.at(smallestIndex);
 	}
 	else
 	{
@@ -369,7 +325,8 @@ Edge * Graph::smallestEdgeDFS(int currVertex, vector<string> &dfs)
 
 		// Preforms a recursive call to check if the previous city visited has
 		// any unvisited edges to continue the DFS.
-		return smallestEdgeDFS(backIndex, dfs);
+		ancestors.pop_back();
+		return smallestEdgeDFS(backIndex, dfs, ancestors);
 	}
 }
 
@@ -470,7 +427,7 @@ int Graph::distance(Vertex * v1, Vertex * v2)
 {
     // find connecting edge
     for (unsigned int i=0; i<v1->edgeList.size(); i++) {
-        if (v1->edgeList.at(i).u == v2->city || v1->edgeList.at(i).v == v2->city)
+        if (v1->edgeList.at(i).v == v2->city)
             return v1->edgeList.at(i).weight;
     }
     return -1;
@@ -520,34 +477,3 @@ unsigned int Graph::edgesDiscovered(int currVertex)
 
 	return numVisited;
 }
-
-/*void Graph::deleteDuplicates(vector<Edge> &edgeList)
-{
-	vector<Edge>::iterator listIt = edgeList.begin();
-
-	// Traverses the list of edges to delete pairs that are the same.
-	while(listIt != edgeList.end())
-	{
-		vector<Edge>::iterator compIt = listIt + 1;
-
-		bool deleted = false;
-
-		// Deletes the first instance of an edge that has the same pair as
-		// the edge pointed to by listIt.
-		while(compIt != edgeList.end() && !deleted)
-		{
-			if(listIt->u == compIt->v && listIt->v == compIt->u)
-			{
-				edgeList.erase(compIt);
-
-				deleted = true;
-			}
-			else
-			{
-				compIt++;
-			}
-		}
-
-		listIt++;
-	}
-}*/

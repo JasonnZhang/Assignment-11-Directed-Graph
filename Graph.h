@@ -14,15 +14,18 @@ struct Edge
 	string u; // Starting city.
 	string v; // Ending city.
 	bool discoveryEdge; // Whether or not edge is a discovery edge.
-	int bfsType;
-	// 0 = back edge
-	// 1 = discovery
-	// 2 = cross edge
+
 	int dfsType;
 	// 0 = back edge
 	// 1 = discovery
 	// 2 = cross edge
 	// 3 = front edge
+
+	int bfsType;
+	// 0 = back edge
+	// 1 = discovery
+	// 2 = cross edge
+
 	int weight; // Distance between the cities.
 
 	// Edge object constructor.
@@ -106,19 +109,8 @@ public:
 	// POST-CONDITION: The list of cities visited in the DFS order is returned.
 	int DFS(string startingCity, vector<string> &dfs, vector<string> &ancestors);
 
-	// Returns a list of the discovery edges created during the DFS.
-	// PRE-CONDITIONS:
-	// dfs - Vector of city names in the order they were visited during DFS must
-	// 		 be defined.
-	vector<string> getDiscoveryEdges(vector<string> &dfs);
-
-	void bfsLabelEdges(vector<string> &discEdges, vector<string> &crossEdges);
-
-	// Returns a list of the back edges created by the DFS.
-	// PRE-CONDITIONS:
-	// dfs - Vector of city names in the order they were visited during DFS must
-	// 		 be defined.
-	vector<string> getBackEdges(vector<string> &dfs);
+	void dfsLabelEdges(vector<string> &dfs, vector<string> &backEdges, vector<string> &discEdges, vector<string> &crossEdges, vector<string> &forwardEdges);
+	void bfsLabelEdges(vector<string> &backEdges, vector<string> &discEdges, vector<string> &crossEdges);
 
 	// Performs a recursive breadth-first search on the graph starting at the
 	// indicated city.
@@ -130,11 +122,12 @@ public:
 	int BFS(string startingCity, vector<string> &bfs);
 
 private:
-	// Finds the closest vertex to the current vertex and returns its graph index.
+	// Finds the closest vertex to the current vertex and returns a pointer to
+	// the edge connecting them.
 	// PRE-CONDITIONS:
 	// currVertex - Index of the current vertex must be defined.
 	// dfs - Vector of cities visited during DFS must be defined.
-	int smallestEdgeDFS(int currVertex, vector<string> &dfs);
+	Edge * smallestEdgeDFS(int currVertex, vector<string> &dfs, vector<string> &ancestors);
 
 	// Returns the number of vertices that have been visited.
 	unsigned int verticesVisited();
@@ -143,10 +136,6 @@ private:
 	// PRE-CONDITIONS:
 	// currVertex - Graph index of the current vertex must be defined.
 	unsigned int edgesDiscovered(int currVertex);
-
-	// Deletes edge pairs that have the same u & v.
-	// If (u, v) already exists, all (v, u) edge pairs will be deleted.
-	//void deleteDuplicates(vector<Edge> &edgeList);
 
 	vector<Vertex> graph; // Vector of vertices used to represent a graph.
 
